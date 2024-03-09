@@ -6,9 +6,13 @@ from fabric.api import *
 from os import path
 from datetime import datetime
 
-env.hosts = ['52.86.116.134', '100.26.174.107']
+# set the server hosts for web-01 and web-02
+env.hosts = [
+    "52.87.254.150",
+    "52.86.39.247",
+]
+# set the username
 env.user = "ubuntu"
-
 
 def do_pack():
     """This method will pack the web_static dir into a tar.gz
