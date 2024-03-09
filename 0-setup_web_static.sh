@@ -1,40 +1,53 @@
 #!/usr/bin/env bash
-# This script sets up my web servers for the deployment of web_static
+#Bash script that sets up your web servers for the deployment of web_static.
+apt-get -q  update
+apt-get -qy install nginx
+DW="/data/web_static"
+mkdir -p $DW/releases/test/
+mkdir -p $DW/shared/
+echo '<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airbnb deploy</title>
+</head>
+<body>
+	Airbnb deploy    
+</body>
+</html>' > "$DW/releases/test/index.html"
+ln -sf $DW/releases/test $DW/current
+chown -R ubuntu:ubuntu /data/
 
-# Install nginx if not already installed
-if ! service nginx status &> /dev/null; then
-    sudo apt -y update
-    sudo apt -y install nginx
-    sudo service nginx start
-fi
+NGPT="/etc/nginx"
+HTML="/var/www/html"
+url="https://github.com/solayof/"
+echo "server {
+	listen 80 default_server;
+	listen [::]:80 default_server;
+	server_name localhost;
+	error_page 404 /404.html;
+	root $HTML;
 
-# create a data directory if it doesn't already exist
-# create a web_static directory if it doesn't already exist
-# create a releases directory if it doesn't already exist
-# create a shared directory if it doesn't already exist
-# create a test directory if it doesn't already exist
-sudo mkdir -p /data/web_static/shared/
-sudo mkdir -p /data/web_static/releases/test/
-
-# create a fake index.html if it doesn't already exist
-if [ ! -f "/data/web_static/releases/test/index.html" ];
+	location / {
+		index index.nginx-debian.html index.html index.htm index.php;
+	}
+	location /hbnb_static {
+		alias $DW/current/;
+	}
+	location /redirect_me {
+		return 301 $url;
+	}
+}" > "$NGPT/sites-available/default"
+rm /etc/nginx/sites-enabled/default
+ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+mkdir -p $HTML
+echo "Hello World!" > "$HTML/index.nginx-debian.html"
+echo "Ceci n'est pas une page" > "$HTML/404.html"
+header="add_header X-served-By \$hostname"
+if ! grep -q "$header" $NGPT/nginx.conf;
 then
-    sudo bash -c 'echo "<html><head></head><body>I love you</body></html>" > /data/web_static/releases/test/index.html'
+	sed -i "/http {.*/a $header;" $NGPT/nginx.conf
 fi
 
-# create a symbolic link, removing existing destination files
-sudo ln -sf /data/web_static/releases/test/ /data/web_static/current
-
-# Grant ownership of /data/ directory to the ubuntu user and group
-sudo chown -hR ubuntu:ubuntu /data/
-
-########################################################################
-# configure nginx to serve the content of /data/web_static/current/ to #
-# hbnb_static using alias                                              #
-########################################################################
-
-# update the alias directive in the Nginx configuration
-sudo sed -i "s,server_name _;,server_name _;\n\n\tlocation /hbnb_static/ {\n\t\talias /data/web_static/current/;\n\t}\n,g" /etc/nginx/sites-available/default
-
-# start nginx to apply changes
-sudo service nginx start
+service nginx restart
