@@ -1,72 +1,60 @@
 #!/usr/bin/python3
-"""This Fabric script distributes an archive to my web servers
+""" These methods aid in deploying the web_static directory
+to the remote servers
 """
+from fabric.api import *
+from os import path
 from datetime import datetime
-from os.path import exists
-from fabric.api import local, env, put, run
 
-# set the server hosts for web-01 and web-02
-env.hosts = [
-    "52.87.254.150",
-    "52.86.39.247",
-]
-# set the username
+env.hosts = ['52.86.116.134', '100.26.174.107']
 env.user = "ubuntu"
 
+
 def do_pack():
-    """Create a tar gzipped archive of the directory web_static."""
-    # obtain the current date and time
-    now = datetime.now().strftime("%Y%m%d%H%M%S")
-
-    # Construct path where archive will be saved
-    archive_path = "versions/web_static_{}.tgz".format(now)
-
-    # use fabric function to create directory if it doesn't exist
-    local("mkdir -p versions")
-
-    # Use tar command to create a compresses archive
-    archived = local("tar -cvzf {} web_static".format(archive_path))
-
-    # Check archive Creation Status
-    if archived.return_code != 0:
+    """This method will pack the web_static dir into a tar.gz
+    for deployinment to remote servers.
+    """
+    if not path.exists(path.dirname("./web_static")):
         return None
 
-    return archive_path
+    if not path.exists(path.dirname("versions")):
+        try:
+            local("mkdir -p versions")
+        except Exception as e:
+            print(e)
+            return None
+    fname = "web_static_{}.tgz".format(
+        datetime.now().strftime("%Y%m%d%H%M%S")
+    )
+    local("echo {}".format(fname))
+    local("tar cpfz {} ./web_static".format(fname))
+    local("mv {file} versions/{file}".format(file=fname))
+    return "version/{}".format(fname)
+
 
 def do_deploy(archive_path):
-    """Distributes an archive to my web servers
-
-    Args:
-        archive_path (str): The path to my archive
+    """ this method will deploy compressed file
+    then unpack and move the content to is proper destination
 
     Returns:
-        bool: true if archive path exists or false if otherwise
+        Bool: True on sucess well Fale
     """
-    if exists(archive_path):
-        # extract the archive filename
-        archive_filename = archive_path.split("/")[1]
-        # create the remote path
-        rem_path = "/tmp/{}".format(archive_filename)
-        # upload the archive file to /tmp/
-        put(archive_path, rem_path)
-        # extract filename without extension
-        archive_name = archive_filename.split(".")[0]
-        # remote directory path
-        rem_dir_path = "/data/web_static/releases/{}/".format(archive_name)
-        # create the directory to contain the uncompressed archive file
-        run("mkdir -p {}".format(rem_dir_path))
-        # uncompress archive
-        run("tar -xzf {} -C {}".format(rem_path, rem_dir_path))
-        # delete the archive from the server
-        run("rm {}".format(rem_path))
-        run("mv -f {pth}web_static/* {pth}".format(pth=rem_dir_path))
-        run("rm -rf {}web_static".format(rem_dir_path))
-        # delete the existing symbolic link
-        sym_link = "/data/web_static/current"
-        run("rm -rf {}".format(sym_link))
-        # create a new symbolic link
-        run("ln -s {} {}".format(rem_dir_path, sym_link))
-        return True
-    return False
-    
-    
+    try:
+        open(archive_path)
+    except IOError:
+        return False
+    split_path = archive_path.split('/')
+    cln_name = split_path[1][0:split_path[1].rfind('.')]
+    dest = '/data/web_static'
+    put(archive_path, "/tmp/")
+    with cd("/tmp/"):
+        run('tar xpf {}'.format(split_path[1]))
+        run('mv web_static {}/releases/{}'.format(dest, cln_name))
+        run('rm -rf {}'.format(split_path[1]))
+
+    with cd(dest):
+        run('rm {}/current'.format(dest))
+        run('ln -s {d}/releases/{t} {d}/current'
+            .format(d=dest, t=cln_name))
+    print('New version deployed!')
+    return True
