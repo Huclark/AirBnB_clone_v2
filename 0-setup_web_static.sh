@@ -2,8 +2,11 @@
 # This script sets up my web servers for the deployment of web_static
 
 # Install nginx if not already installed
-sudo apt -y update
-sudo apt -y install nginx
+if ! service nginx status &> /dev/null; then
+    sudo apt -y update
+    sudo apt -y install nginx
+    sudo service nginx start
+fi
 
 # create a data directory if it doesn't already exist
 # create a web_static directory if it doesn't already exist
@@ -23,21 +26,15 @@ fi
 sudo ln -sf /data/web_static/releases/test/ /data/web_static/current
 
 # Grant ownership of /data/ directory to the ubuntu user and group
-sudo chown -R ubuntu:ubuntu /data/
+sudo chown -hR ubuntu:ubuntu /data/
 
 ########################################################################
 # configure nginx to serve the content of /data/web_static/current/ to #
 # hbnb_static using alias                                              #
 ########################################################################
 
-# define path to nginx configuration file
-NGINX_CONFIG="/etc/nginx/sites-available/default"
-
-# define path to the web static content directory
-CURRENT="/data/web_static/current"
-
 # update the alias directive in the Nginx configuration
-sudo sed -i "26i \\\tlocation /hbnb_static/ {\n\t\talias '$CURRENT';\n\t}\n" $NGINX_CONFIG
+sudo sed -i "s,server_name _;,server_name _;\n\n\tlocation /hbnb_static/ {\n\t\talias /data/web_static/current/;\n\t}\n,g" /etc/nginx/sites-available/default
 
 # start nginx to apply changes
 sudo service nginx start
