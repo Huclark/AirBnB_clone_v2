@@ -3,7 +3,7 @@
 to the remote servers
 """
 from fabric.api import *
-from os import path
+from os import path, listdir, unlink
 from datetime import datetime
 
 # set the server hosts for web-01 and web-02
@@ -73,3 +73,28 @@ def deploy():
     if archive_path is None:
         return False
     return do_deploy(archive_path)
+
+
+def do_clean(number=0):
+    """Deletes out-of-date archives of the static files.
+    Args:
+        number (Any): The number of archives to keep.
+    """
+    archives = listdir('versions/')
+    archives.sort(reverse=True)
+    start = int(number)
+    if not start:
+        start += 1
+    if start < len(archives):
+        archives = archives[start:]
+    else:
+        archives = []
+    for archive in archives:
+        unlink('versions/{}'.format(archive))
+    cmd_parts = [
+        "rm -rf $(",
+        "find /data/web_static/releases/ -maxdepth 1 -type d -iregex",
+        " '/data/web_static/releases/web_static_.*'",
+        " | sort -r | tr '\\n' ' ' | cut -d ' ' -f{}-)".format(start + 1)
+    ]
+    run(''.join(cmd_parts))
