@@ -2,22 +2,16 @@
 """ These methods aid in deploying the web_static directory
 to the remote servers
 """
-from fabric.api import *
-from os import path, listdir, unlink
+from os import path
 from datetime import datetime
+from fabric.api import *
 
-# set the server hosts for web-01 and web-02
-env.hosts = [
-    "52.87.254.150",
-    "52.86.39.247",
-]
-# set the username
-env.user = "ubuntu"
+env.hosts = ['100.26.174.107', '52.86.116.134']
 
 
+@runs_once
 def do_pack():
     """This method will pack the web_static dir into a tar.gz
-    for deployinment to remote servers.
     """
     if not path.exists(path.dirname("./web_static")):
         return None
@@ -31,10 +25,9 @@ def do_pack():
     fname = "web_static_{}.tgz".format(
         datetime.now().strftime("%Y%m%d%H%M%S")
     )
-    local("echo {}".format(fname))
     local("tar cpfz {} ./web_static".format(fname))
     local("mv {file} versions/{file}".format(file=fname))
-    return "version/{}".format(fname)
+    return "versions/{}".format(fname)
 
 
 def do_deploy(archive_path):
@@ -45,7 +38,7 @@ def do_deploy(archive_path):
         Bool: True on sucess well Fale
     """
     try:
-        open(archive_path)
+        open(archive_path, encoding="utf-8")
     except IOError:
         return False
     split_path = archive_path.split('/')
@@ -66,35 +59,30 @@ def do_deploy(archive_path):
 
 
 def deploy():
+    """this method will pack and deploy
     """
-    Create and archive and get its path
-    """
-    archive_path = do_pack()
-    if archive_path is None:
-        return False
-    return do_deploy(archive_path)
+    pth = do_pack()
+    print(pth)
+    if pth:
+        return do_deploy(pth)
+    return False
 
 
 def do_clean(number=0):
-    """Deletes out-of-date archives of the static files.
-    Args:
-        number (Any): The number of archives to keep.
+    """method that deletes out-of-date archives from version directory and
+    from the remote server(s).
     """
-    archives = listdir('versions/')
-    archives.sort(reverse=True)
-    start = int(number)
-    if not start:
-        start += 1
-    if start < len(archives):
-        archives = archives[start:]
+    tgz_files = local("ls versions/*.tgz", capture=True)
+    tgz_list = tgz_files.split("\n")
+    number = int(number)
+    tgz_list.sort()
+    if number > 1:
+        rm_tgz = tgz_list[0:-number]
     else:
-        archives = []
-    for archive in archives:
-        unlink('versions/{}'.format(archive))
-    cmd_parts = [
-        "rm -rf $(",
-        "find /data/web_static/releases/ -maxdepth 1 -type d -iregex",
-        " '/data/web_static/releases/web_static_.*'",
-        " | sort -r | tr '\\n' ' ' | cut -d ' ' -f{}-)".format(start + 1)
-    ]
-    run(''.join(cmd_parts))
+        rm_tgz = tgz_list[0:-1]
+    for line in rm_tgz:
+        local("rm {}".format(line))
+    remote_dir = [rm.split("/")[-1].split(".")[0] for rm in rm_tgz]
+    with cd("/data/web_static/releases/"):
+        for rm_dir in remote_dir:
+            run("rm -rf {}".format(rm_dir))
