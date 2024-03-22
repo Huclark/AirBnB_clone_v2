@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """This script starts a Flask web app"""
-from flask import Flask
+from flask import Flask, abort
 
 app = Flask(__name__)
 
@@ -55,6 +55,20 @@ def python_text(text="is cool"):
         by spaces.
     """
     return f"Python {text.replace('_', ' ')}"
+
+
+@app.route('/number/<n>', strict_slashes=False)
+def python_number(n):
+    """This route checks if n is a number and displays a string if
+    n is a number
+
+    Args:
+        n (str): the number to check
+
+    Returns:
+        _type_: _description_
+    """
+    return f"{n} is a number" if n.isdigit() else abort(404)
 
 
 if __name__ == '__main__':
