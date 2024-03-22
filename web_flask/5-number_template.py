@@ -72,7 +72,7 @@ def python_number(n):
 
 
 @app.route('/number_template/<n>', strict_slashes=False)
-def we_dey_render(n):
+def we_dey_render(n=None):
     """This route checks if n is a number and renders an html page if
     n is a number
 
