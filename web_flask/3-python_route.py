@@ -51,8 +51,8 @@ def python_text(text="is cool"):
         Defaults to "is cool".
 
     Returns:
-        str: 'Python ' followed by the value of text with underscores replaced by
-        spaces.
+        str: 'Python ' followed by the value of text with underscores replaced
+        by spaces.
     """
     return f"Python {text.replace('_', ' ')}"
 
