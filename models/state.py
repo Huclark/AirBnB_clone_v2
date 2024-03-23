@@ -12,7 +12,6 @@ class State(BaseModel, Base):
     """ State class """
     __tablename__ = "states"
     name = Column(String(128), nullable=False)
-
     storage_type = getenv("HBNB_TYPE_STORAGE")
 
     # Relationship for DBStorage
@@ -36,6 +35,6 @@ class State(BaseModel, Base):
             all_cities = []
             city_items = models.storage.all(City).values()
             for city in city_items:
-                if self.id == city.states_id:
+                if self.id == city.state_id:
                     all_cities.append(city)
             return all_cities
