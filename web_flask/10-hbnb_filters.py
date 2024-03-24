@@ -17,7 +17,11 @@ def hbnb_filters():
     """
     states = storage.all(State)
     amenity = storage.all(Amenity)
-    return render_template('10-hbnb_filters.html', states=states, amenity=amenity)
+    return render_template(
+        '10-hbnb_filters.html',
+        states=states,
+        amenity=amenity
+    )
 
 
 @app.teardown_appcontext
